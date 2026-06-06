@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Maple Leaf</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #FAEBD7;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+            position: fixed;
+            width: 100%;
+            height: 100%;
+        }
+
+        h1 {
+            margin: 5px 0;
+            color: #D66800;
+            text-shadow: 1px 1px #FFF;
+        }
+
+        #game-container {
+            position: relative;
+            width: 360px;
+            height: 500px;
+            background: linear-gradient(to bottom, #A8DADC, #F1FAEE);
+            border: 4px solid #D66800;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            touch-action: none;
+        }
+
+        #leaf {
+            position: absolute;
+            left: 50px;
+            top: 200px;
+            width: 34px;
+            height: 34px;
+            font-size: 2rem;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 5;
+            transform-origin: center;
+        }
+
+        .branch {
+            position: absolute;
+            width: 60px;
+            background-color: #8B5A2B;
+            border-left: 4px solid #5C3A1A;
+            border-right: 4px solid #5C3A1A;
+        }
+
+        .branch::after {
+            content: '🍃';
+            position: absolute;
+            font-size: 1.2rem;
+            left: 15px;
+        }
+        .branch-top::after { bottom: 0; }
+        .branch-bottom::after { top: 0; }
+
+        #house-window {
+            position: absolute;
+            width: 80px;
+            height: 100px;
+            background-color: #FFF;
+            border: 6px solid #4A3728;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.3), 0 0 10px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            z-index: 3;
+            border-radius: 5px 5px 0 0;
+        }
+        #house-window::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 4px;
+            background: #4A3728;
+            top: 45px;
+        }
+        #house-window::after {
+            content: '';
+            position: absolute;
+            width: 4px;
+            height: 100%;
+            background: #4A3728;
+            left: 32px;
+        }
+
+        #score-board {
+            position: absolute;
+            top: 15px;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #264653;
+            z-index: 10;
+            text-shadow: 2px 2px white;
+        }
+
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 254, 250, 0.85);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 20;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .screen h2 { font-size: 2rem; margin-bottom: 10px; }
+        .screen h2.win { color: #2a9d8f; }
+        .screen h2.lose { color: #e76f51; }
+
+        button {
+            background-color: #E76F51;
+            color: white;
+            border: none;
+            padding: 12px 28px;
+            font-size: 1.1rem;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 4px #B54930;
+            margin-top: 15px;
+        }
+
+        button:active {
+            box-shadow: none;
+            transform: translateY(4px);
+        }
+
+        .info-text {
+            margin-top: 10px;
+            font-size: 0.9rem;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🍁 Maple Leaf 💨</h1>
+    <div id="game-container">
+        <div id="score-board">0</div>
+        <div id="leaf">🍁</div>
+        
+        <!-- Start Screen -->
+        <div id="start-screen" class="screen">
+            <h2>Fly into the House!</h2>
+            <p>Dodge the branches. Reach the window at score 1000 to win!</p>
+            <button onclick="startGame()">Start Flying</button>
+            <p class="info-text">Tap Screen, Press Spacebar, W, or Up Arrow to fly</p>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div id="game-over-screen" class="screen" style="display: none;">
+            <h2 class="lose">Leaf Crashed! 🍂</h2>
+            <p>Score: <span id="final-score">0</span></p>
+            <button onclick="startGame()">Try Again</button>
+        </div>
+
+        <!-- Victory Screen -->
+        <div id="victory-screen" class="screen" style="display: none;">
+            <h2 class="win">You Won! 🎉🏡</h2>
+            <p>Incredible! The leaf made it safely into the house window at score 1000!</p>
+            <button onclick="startGame()">Play Again</button>
+        </div>
+    </div>
+
+    <script>
+        const container = document.getElementById('game-container');
+        const leafElement = document.getElementById('leaf');
+        const scoreBoard = document.getElementById('score-board');
+        const startScreen = document.getElementById('start-screen');
+        const gameOverScreen = document.getElementById('game-over-screen');
+        const victoryScreen = document.getElementById('victory-screen');
+        const finalScoreDisplay = document.getElementById('final-score');
+
+        // Game tuning parameters
+        const WINNING_SCORE = 1000; // Target goal
+        const gravity = 0.25;
+        const jumpPower = -5.5;
+        const gameWidth = 360;
+        const gameHeight = 500;
+
+        let leafY = 200;
+        let velocity = 0;
+        let score = 0;
+        let gameInterval = null;
+        let isGameRunning = false;
+        let branches = [];
+        let houseWindow = null;
+        let frameCount = 0;
+
+        function startGame() {
+            leafY = 200;
+            velocity = 0;
+            score = 0;
+            frameCount = 0;
+            isGameRunning = true;
+            scoreBoard.innerText = "0";
+
+            branches.forEach(b => {
+                if(b.topEl) b.topEl.remove();
+                if(b.bottomEl) b.bottomEl.remove();
+            });
+            branches = [];
+            if (houseWindow) {
+                houseWindow.el.remove();
+                houseWindow = null;
+            }
+
+            startScreen.style.display = 'none';
+            gameOverScreen.style.display = 'none';
+            victoryScreen.style.display = 'none';
+
+            clearInterval(gameInterval);
+            gameInterval = setInterval(updateGame, 20);
+        }
+
+        function leafJump() {
+            if (isGameRunning) {
+                velocity = jumpPower;
+            }
+        }
+
+        function createBranches() {
+            const gap = 130;
+            const minHeight = 50;
+            const maxHeight = gameHeight - gap - minHeight;
+            const topHeight = Math.floor(Math.random() * (maxHeight - minHeight + 1)) + minHeight;
+            const bottomHeight = gameHeight - gap - topHeight;
+
+            const topEl = document.createElement('div');
+            topEl.classList.add('branch', 'branch-top');
+            topEl.style.height = topHeight + 'px';
+            topEl.style.top = '0px';
+            topEl.style.left = gameWidth + 'px';
+
+            const bottomEl = document.createElement('div');
+            bottomEl.classList.add('branch', 'branch-bottom');
+            bottomEl.style.height = bottomHeight + 'px';
+            bottomEl.style.bottom = '0px';
+            bottomEl.style.left = gameWidth + 'px';
+
+            container.appendChild(topEl);
+            container.appendChild(bottomEl);
+
+            branches.push({
+                x: gameWidth,
+                width: 60,
+                topHeight: topHeight,
+                bottomY: gameHeight - bottomHeight,
+                topEl: topEl,
+                bottomEl: bottomEl,
+                passed: false
+            });
+        }
+
+        function createHouseWindow() {
+            const windowEl = document.createElement('div');
+            windowEl.id = 'house-window';
+            windowEl.style.left = gameWidth + 'px';
+            const windowHeight = 100;
+            const windowTop = (gameHeight / 2) - (windowHeight / 2);
+            windowEl.style.top = windowTop + 'px';
+            windowEl.innerText = '🪟';
+
+            container.appendChild(windowEl);
+
+            houseWindow = {
+                x: gameWidth,
+                width: 80,
+                top: windowTop,
+                height: windowHeight,
+                el: windowEl,
+                triggeredWin: false
+            };
+        }
+
+        function updateGame() {
+            frameCount++;
+
+            velocity += gravity;
+            leafY += velocity;
+            leafElement.style.top = leafY + 'px';
+
+            let rotation = Math.min(Math.max(velocity * 4, -30), 70);
+            leafElement.style.transform = `rotate(${rotation}deg)`;
+
+            if (leafY < 0 || leafY > gameHeight - 34) {
+                endGame(false);
+                return;
+            }
+
+            if (score < WINNING_SCORE - 1) {
+                if (frameCount % 100 === 0) {
+                    createBranches();
+                }
+            } else if (!houseWindow && branches.length === 0) {
+                createHouseWindow();
+            }
+
+            for (let i = branches.length - 1; i >= 0; i--) {
+                let b = branches[i];
+                b.x -= 2.5; 
+                b.topEl.style.left = b.x + 'px';
+                b.bottomEl.style.left = b.x + 'px';
+
+                if (b.x < 50 + 34 && b.x + b.width > 50) {
+                    if (leafY < b.topHeight || (leafY + 34) > b.bottomY) {
+                        endGame(false);
+                        return;
+                    }
+                }
+
+                if (!b.passed && b.x + b.width < 50) {
+                    b.passed = true;
+                    score++;
+                    scoreBoard.innerText = score;
+                }
+
+                if (b.x + b.width < 0) {
+                    b.topEl.remove();
+                    b.bottomEl.remove();
+                    branches.splice(i, 1);
+                }
+            }
+
+            if (houseWindow) {
+                houseWindow.x -= 2.5;
+                houseWindow.el.style.left = houseWindow.x + 'px';
+
+                if (houseWindow.x < 50 + 34 && houseWindow.x + houseWindow.width > 50) {
+                    if (leafY > houseWindow.top && (leafY + 34) < (houseWindow.top + houseWindow.height)) {
+                        if (!houseWindow.triggeredWin) {
+                            houseWindow.triggeredWin = true;
+                            score++;
+                            scoreBoard.innerText = score;
+                            endGame(true);
+                            return;
+                        }
+                    } else {
+                        endGame(false);
+                        return;
+                    }
+                }
+                
+                if (houseWindow.x + houseWindow.width < 0) {
+                    endGame(false);
+                }
+            }
+        }
+
+        function endGame(isVictory) {
+            isGameRunning = false;
+            clearInterval(gameInterval);
+
+            if (isVictory) {
+                victoryScreen.style.display = 'flex';
+            } else {
+                finalScoreDisplay.innerText = score;
+                gameOverScreen.style.display = 'flex';
+            }
+        }
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === ' ' || e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') {
+                e.preventDefault(); 
+                leafJump();
+            }
+        });
+
+        container.addEventListener('touchstart', function(e) {
+            e.preventDefault();
+            leafJump();
+        }, { passive: false });
+    </script>
+</body>
+</html>
