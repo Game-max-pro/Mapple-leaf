@@ -399,10 +399,12 @@
             }
         });
 
-        container.addEventListener('touchstart', function(e) {
-            e.preventDefault();
+               // --- FIXED MOBILE TOUCH CODE ---
+        // Listening to the window ensures your tap works anywhere on the screen!
+        window.addEventListener('touchstart', function() {
             leafJump();
-        }, { passive: false });
+        }, { passive: true }); // "passive: true" tells the smartphone it is 100% safe to run the jump instantly!
+
     </script>
 </body>
 </html>
